@@ -1,0 +1,135 @@
+# Publishes a GitHub Release for every releases/vX.Y.Z.json manifest that has
+# none yet. The private build pushes the signed release files to a temporary
+# branch, assets/vX.Y.Z, before committing the manifest here; this workflow
+# checks them against the manifest and ephemeral-release.pub.pem, publishes
+# them, and deletes the branch. Re-running it is safe: published tags are
+# skipped. It needs no credentials beyond this repository's own token.
+name: Publish releases
+
+on:
+  push:
+    branches: [main]
+    paths: ["releases/*.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-releases
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Find manifests without a release
+        id: pending
+        run: |
+          set -euo pipefail
+          pending=""
+          for manifest in releases/v*.json; do
+            [ -e "$manifest" ] || continue
+            tag=$(basename "$manifest" .json)
+            if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error file=$manifest::$tag is not a release tag like v1.2.3"
+              exit 1
+            fi
+            if [ "$(jq -r .tag "$manifest")" != "$tag" ] || [ "$(jq -r .version "$manifest")" != "${tag#v}" ]; then
+              echo "::error file=$manifest::tag and version do not match the file name"
+              exit 1
+            fi
+            if output=$(gh release view "$tag" --json tagName 2>&1); then
+              echo "$tag is already published."
+            elif grep -q "release not found" <<<"$output"; then
+              pending="$pending $tag"
+            else
+              echo "::error::gh release view $tag failed: $output"
+              exit 1
+            fi
+          done
+          echo "Releases to publish:${pending:- none}"
+          echo "tags=${pending# }" >> "$GITHUB_OUTPUT"
+
+      - name: Verify and publish
+        if: steps.pending.outputs.tags != ''
+        env:
+          TAGS: ${{ steps.pending.outputs.tags }}
+        run: |
+          set -euo pipefail
+          # Only the highest stable version becomes the "Latest" release,
+          # which is what installers and `ephemeral update` resolve.
+          latest=$(for f in releases/v*.json; do basename "$f" .json; done | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          for tag in $TAGS; do
+            manifest="releases/$tag.json"
+            version="${tag#v}"
+            stage="$RUNNER_TEMP/stage/$tag"
+            dist="$RUNNER_TEMP/dist/$tag"
+            rm -rf "$stage" "$dist"
+            mkdir -p "$stage" "$dist"
+            git fetch --quiet --depth 1 origin "refs/heads/assets/$tag"
+            git archive FETCH_HEAD | tar -x -C "$stage"
+
+            # checksums.txt must be signed by the release key...
+            base64 -d "$stage/checksums.txt.sig" > "$RUNNER_TEMP/checksums.txt.sig.bin"
+            openssl pkeyutl -verify -pubin -inkey ephemeral-release.pub.pem -rawin \
+              -in "$stage/checksums.txt" -sigfile "$RUNNER_TEMP/checksums.txt.sig.bin"
+
+            # ...and list exactly the manifest's assets.
+            jq -r '.assets[] | "\(.sha256)  \(.name)"' "$manifest" | sort > "$RUNNER_TEMP/expected.txt"
+            sort "$stage/checksums.txt" > "$RUNNER_TEMP/signed.txt"
+            if ! diff -u "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/signed.txt"; then
+              echo "::error file=$manifest::the manifest and the signed checksums.txt list different files"
+              exit 1
+            fi
+
+            # Publish only those files, after checking every one.
+            cp "$stage/checksums.txt" "$stage/checksums.txt.sig" "$dist/"
+            for name in $(jq -r '.assets[].name' "$manifest"); do
+              if ! [[ "$name" =~ ^ephemeral_${version//./\\.}_(darwin|linux|windows)_(amd64|arm64)\.(tar\.gz|zip)$ ]]; then
+                echo "::error file=$manifest::unexpected asset name $name"
+                exit 1
+              fi
+              cp "$stage/$name" "$dist/$name"
+            done
+            (cd "$dist" && sha256sum --strict -c checksums.txt)
+
+            notes="$RUNNER_TEMP/notes-$tag.md"
+            jq -r '.notes // empty' "$manifest" > "$notes"
+            if [ ! -s "$notes" ]; then
+              commit=$(jq -r .commit "$manifest")
+              built=$(jq -r .date "$manifest")
+              cat > "$notes" <<EOF
+          ephemeral $version (commit ${commit:0:7}, built ${built:0:10}).
+
+          Install or upgrade:
+
+          - macOS and Linux: \`curl -fsSL https://ephemer.al/install.sh | sh\`
+          - Windows: \`irm https://ephemer.al/install.ps1 | iex\`
+          - Existing installations: \`ephemeral update\`
+
+          \`checksums.txt\` is signed with the key in [ephemeral-release.pub.pem](https://github.com/$GITHUB_REPOSITORY/blob/main/ephemeral-release.pub.pem); see the [README](https://github.com/$GITHUB_REPOSITORY#verify-a-download) to verify a download.
+          EOF
+            fi
+
+            flags=(--latest=false)
+            if [ "$(jq -r .prerelease "$manifest")" = true ] || [[ "$version" == *-* ]]; then
+              flags=(--prerelease --latest=false)
+            elif [ "$version" = "$latest" ]; then
+              flags=(--latest)
+            fi
+
+            # Remove drafts left by an interrupted run before creating the release.
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq ".[] | select(.draft and .tag_name == \"$tag\") | .id" |
+              while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
+
+            gh release create "$tag" "$dist"/* install.sh install.ps1 \
+              --title "ephemeral $version" --notes-file "$notes" --target "$GITHUB_SHA" "${flags[@]}"
+            git push --quiet origin --delete "assets/$tag"
+            echo "Published $tag."
+          done
