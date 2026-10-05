@@ -67,7 +67,7 @@ main() {
 	case $(uname -s) in
 	Linux) os=linux ;;
 	Darwin) os=darwin ;;
-	*) fail "unsupported operating system $(uname -s); on Windows run: irm https://ephemer.al/install.ps1 | iex" ;;
+	*) fail "unsupported operating system $(uname -s); on Windows run: irm https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.ps1 | iex" ;;
 	esac
 	case $(uname -m) in
 	x86_64 | amd64) arch=amd64 ;;

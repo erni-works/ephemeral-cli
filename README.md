@@ -9,24 +9,16 @@ This repository publishes signed `ephemeral` binaries for macOS, Linux and Windo
 macOS and Linux:
 
 ```sh
-curl -fsSL https://ephemer.al/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.sh | sh
 ```
 
 Windows (PowerShell 5.1 or later):
 
 ```powershell
-irm https://ephemer.al/install.ps1 | iex
-```
-
-The same scripts are served from this repository:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.sh | sh
-```
-
-```powershell
 irm https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.ps1 | iex
 ```
+
+`https://ephemer.al/install.sh` and `https://ephemer.al/install.ps1` redirect to the same scripts.
 
 The installer downloads the latest release for your system, checks it against the release's `checksums.txt`, and installs it without administrator rights:
 
@@ -44,7 +36,7 @@ Installer settings, all optional:
 | `EPHEMERAL_DOWNLOAD_BASE` | Download from another copy of this repository's releases. |
 
 ```sh
-curl -fsSL https://ephemer.al/install.sh | EPHEMERAL_VERSION=v1.2.3 EPHEMERAL_INSTALL_DIR="$HOME/bin" sh
+curl -fsSL https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.sh | EPHEMERAL_VERSION=v1.2.3 EPHEMERAL_INSTALL_DIR="$HOME/bin" sh
 ```
 
 Builds are provided for macOS (Intel and Apple silicon), Linux (x86-64 and ARM64; static, so any distribution) and Windows (x64 and ARM64).

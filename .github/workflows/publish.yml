@@ -108,8 +108,8 @@ jobs:
 
           Install or upgrade:
 
-          - macOS and Linux: \`curl -fsSL https://ephemer.al/install.sh | sh\`
-          - Windows: \`irm https://ephemer.al/install.ps1 | iex\`
+          - macOS and Linux: \`curl -fsSL https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.sh | sh\`
+          - Windows: \`irm https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.ps1 | iex\`
           - Existing installations: \`ephemeral update\`
 
           \`checksums.txt\` is signed with the key in [ephemeral-release.pub.pem](https://github.com/$GITHUB_REPOSITORY/blob/main/ephemeral-release.pub.pem); see the [README](https://github.com/$GITHUB_REPOSITORY#verify-a-download) to verify a download.
