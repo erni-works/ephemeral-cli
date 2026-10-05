@@ -1,0 +1,51 @@
+{
+  "version": "0.1.0",
+  "tag": "v0.1.0",
+  "commit": "053e387369efe343dac143cb4098c8d7fe151cd0",
+  "date": "2026-10-05T04:45:10Z",
+  "prerelease": false,
+  "assets": [
+    {
+      "name": "ephemeral_0.1.0_darwin_amd64.tar.gz",
+      "size": 2964175,
+      "sha256": "13405771585b8c8a6fa92f59b63e2146fd7585bc81c906ec61bb6de8670679e8",
+      "os": "darwin",
+      "arch": "amd64"
+    },
+    {
+      "name": "ephemeral_0.1.0_darwin_arm64.tar.gz",
+      "size": 2776347,
+      "sha256": "88e6d21bff5275a312e0e079f9845a62cab79889c630745189836dff3d2ad3f2",
+      "os": "darwin",
+      "arch": "arm64"
+    },
+    {
+      "name": "ephemeral_0.1.0_linux_amd64.tar.gz",
+      "size": 2926629,
+      "sha256": "3644052dfca2ac61cbb007d7e5ff8b84dfefa6b9b5f8e72621f0d6700b2ff066",
+      "os": "linux",
+      "arch": "amd64"
+    },
+    {
+      "name": "ephemeral_0.1.0_linux_arm64.tar.gz",
+      "size": 2686399,
+      "sha256": "e5ef46bb4d47c71eb94b7e479e31d48160490d3fd14081f9cde13905d9238816",
+      "os": "linux",
+      "arch": "arm64"
+    },
+    {
+      "name": "ephemeral_0.1.0_windows_amd64.zip",
+      "size": 3025342,
+      "sha256": "a888001ecbfdced28abebac885b9b2c8692a9b96b5bccc72f7bd327f30600ec0",
+      "os": "windows",
+      "arch": "amd64"
+    },
+    {
+      "name": "ephemeral_0.1.0_windows_arm64.zip",
+      "size": 2737713,
+      "sha256": "605891d9fcff57447595bac5728379722ea4b4b34fbeddcf398824972a7f5754",
+      "os": "windows",
+      "arch": "arm64"
+    }
+  ]
+}
