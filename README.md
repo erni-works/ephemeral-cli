@@ -2,6 +2,8 @@
 
 [Ephemeral AI](https://ephemer.al) runs disposable AI agents. One API call supplies instructions, input, files and authenticated HTTP/MCP connections, or names a saved workflow; Ephemeral starts the agent in a fresh, isolated worker, streams its events, records the result and destroys the worker. `ephemeral` is the command-line client for that API: start and watch runs, manage workflows, schedules, files and connections, and call any other endpoint.
 
+Each run has a hard budget reserved before it starts, credentials stay outside the worker, and runs can start on request, on a schedule or from any MCP client through Ephemeral's MCP server. Learn more: [pricing](https://ephemer.al/en/pricing), [documentation](https://ephemer.al/en/docs), [how it compares](https://ephemer.al/en/compare), [llms.txt](https://ephemer.al/llms.txt) and the [OpenAPI document](https://ephemer.al/openapi.json).
+
 This repository publishes signed `ephemeral` binaries for macOS, Linux and Windows. The source code is not public.
 
 ## Install
@@ -39,7 +41,7 @@ Installer settings, all optional:
 curl -fsSL https://raw.githubusercontent.com/erni-works/ephemeral-cli/main/install.sh | EPHEMERAL_VERSION=v1.2.3 EPHEMERAL_INSTALL_DIR="$HOME/bin" sh
 ```
 
-Builds are provided for macOS (Intel and Apple silicon), Linux (x86-64 and ARM64; static, so any distribution) and Windows (x64 and ARM64).
+Builds are provided for macOS 13 Ventura or later (Intel and Apple silicon), Linux (x86-64 and ARM64; static, so any distribution) and Windows (x64 and ARM64).
 
 ## Sign in
 
@@ -75,7 +77,7 @@ ephemeral update --check             # only report whether one is available
 ephemeral update --version v1.2.3    # install a specific release, including pre-releases
 ```
 
-`ephemeral update` replaces the running executable in place after checking the release's signature and checksum; nothing is installed if either check fails. If the executable's directory is not writable, re-run the command with `sudo` or reinstall with the installer. Once a day, interactive commands also check in the background whether a newer version exists and print a one-line notice; the check never delays or fails a command, and is skipped in CI (`CI` set) and with `EPHEMERAL_NO_UPDATE_CHECK=1`.
+`ephemeral update` replaces the running executable in place after checking the release's signature and checksum, and on macOS and Linux that the new executable starts; nothing is installed if a check fails. If the executable's directory is not writable, re-run the command with `sudo` or reinstall with the installer. Once a day, interactive commands also check in the background whether a newer version exists and print a one-line notice; the check never delays or fails a command, and is skipped in CI (`CI` set) and with `EPHEMERAL_NO_UPDATE_CHECK=1`.
 
 ## Verify a download
 
@@ -103,7 +105,9 @@ On Windows, compare `(Get-FileHash ephemeral_1.2.3_windows_amd64.zip).Hash` with
 
 ## Uninstall
 
-macOS and Linux (use your `EPHEMERAL_INSTALL_DIR` if you set one):
+The CLI leaves behind only its executable, the configuration directory where `login` saved your key and URL, and a cache directory with the result of the daily update check. Uninstalling removes all three, so `ephemeral logout` is not needed first. Removing the saved key does not revoke it: the API key stays valid until you delete it under **Keys** in the [dashboard](https://app.ephemer.al).
+
+macOS and Linux (use your `EPHEMERAL_INSTALL_DIR` if you set one; on Linux, `$XDG_CONFIG_HOME` and `$XDG_CACHE_HOME` replace `~/.config` and `~/.cache` when they are set):
 
 ```sh
 rm -f ~/.local/bin/ephemeral
@@ -111,13 +115,19 @@ rm -rf ~/.config/ephemeral ~/.cache/ephemeral                                   
 rm -rf ~/Library/Application\ Support/ephemeral ~/Library/Caches/ephemeral      # macOS
 ```
 
-Windows:
+If you added `~/.local/bin` to your `PATH` only for `ephemeral`, remove that line from your shell's startup file too.
+
+Windows, in PowerShell. The last lines take the install directory out of your user `Path` again, which the installer added; with `EPHEMERAL_INSTALL_DIR`, remove that directory instead and use it as `$bin`:
 
 ```powershell
 Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\ephemeral", "$env:APPDATA\ephemeral", "$env:LOCALAPPDATA\ephemeral" -ErrorAction SilentlyContinue
+$bin = "$env:LOCALAPPDATA\Programs\ephemeral\bin"
+$environment = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+$kept = ([string]$environment.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)) -split ';' | Where-Object { $_ -and [Environment]::ExpandEnvironmentVariables($_).TrimEnd('\') -ine $bin }
+$environment.SetValue('Path', ($kept -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString); $environment.Close()
 ```
 
-Then remove `%LOCALAPPDATA%\Programs\ephemeral\bin` from **Path** under *Edit environment variables for your account*.
+The same steps are in the [documentation](https://ephemer.al/docs/cli#uninstall).
 
 ## Releases
 
