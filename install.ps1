@@ -184,4 +184,5 @@
     $environment.Close()
     Write-Host ''
     Write-Host 'Get started: ephemeral login'
+    Write-Host 'To uninstall: https://ephemer.al/docs/cli#uninstall'
 }
