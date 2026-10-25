@@ -74,6 +74,13 @@ main() {
 	arm64 | aarch64) arch=arm64 ;;
 	*) fail "unsupported architecture $(uname -m)" ;;
 	esac
+	if [ "$os" = darwin ]; then
+		macos=$(sw_vers -productVersion 2>/dev/null || true)
+		case ${macos%%.*} in
+		'' | *[!0-9]*) ;;
+		*) [ "${macos%%.*}" -ge 13 ] || fail "Ephemeral needs macOS 13 Ventura or later; this Mac runs macOS $macos" ;;
+		esac
+	fi
 	# A shell translated by Rosetta reports x86_64 on Apple silicon.
 	if [ "$os" = darwin ] && [ "$arch" = amd64 ] && [ "$(sysctl -n hw.optional.arm64 2>/dev/null || true)" = 1 ]; then
 		arch=arm64
@@ -132,7 +139,7 @@ main() {
 		printf '\n%s is not on your PATH. Add it, e.g. in ~/.profile or your shell rc file:\n  export PATH="%s:$PATH"\n' "$install_dir" "$install_dir"
 		;;
 	esac
-	printf '\nGet started: ephemeral login\n'
+	printf '\nGet started: ephemeral login\nTo uninstall: https://ephemer.al/docs/cli#uninstall\n'
 }
 
 main "$@"
